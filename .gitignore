@@ -1,0 +1,6 @@
+.depend
+.built
+out/
+*/.depend
+*/Make.dep
+*/*.o
