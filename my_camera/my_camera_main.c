@@ -54,7 +54,7 @@
 #define STILL_BUFNUM       (1)
 
 #define MAX_CAPTURE_NUM     (100)
-#define DEFAULT_CAPTURE_NUM (10)
+#define DEFAULT_CAPTURE_NUM (1)
 
 #define START_CAPTURE_TIME  (5)   /* seconds */
 #define KEEP_VIDEO_TIME     (10)  /* seconds */
