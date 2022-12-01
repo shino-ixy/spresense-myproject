@@ -276,8 +276,9 @@ static int parse_arguments(int argc, char *argv[],
   if (argc == 1)
     {
       *capture_num = DEFAULT_CAPTURE_NUM;
-      *type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+      *type = V4L2_BUF_TYPE_STILL_CAPTURE;
     }
+#if 0
   else if (argc == 2)
     {
       if (strncmp(argv[1], "-jpg", 5) == 0)
@@ -318,6 +319,7 @@ static int parse_arguments(int argc, char *argv[],
           return ERROR;
         }
     }
+#endif
   else
     {
       printf("Too many arguments\n");
@@ -721,7 +723,7 @@ int main(int argc, FAR char *argv[])
                   (uint8_t *)v4l2_buf.m.userptr,
                   (size_t)v4l2_buf.bytesused,
                   (capture_type == V4L2_BUF_TYPE_VIDEO_CAPTURE) ?
-                  "RGB" : "JPG");
+                  "JPG" : "JPG");
 
                 ret = release_camimage(v_fd, &v4l2_buf);
                 if (ret != OK)
