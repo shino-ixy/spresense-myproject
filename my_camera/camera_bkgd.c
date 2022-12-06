@@ -286,7 +286,6 @@ int nximage_initialize(void)
 
   printf("nximage_initialize: Screen resolution (%d,%d)\n",
          g_nximage.xres, g_nximage.yres);
-
   return 0;
 }
 
