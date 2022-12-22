@@ -48,6 +48,8 @@
  ****************************************************************************/
 
 #define IMAGE_JPG_SIZE     (512*1024)  /* 512kB for FullHD Jpeg file. */
+#define IMAGE_RGB_SIZE     (320*240*2) /* QVGA RGB565 */
+
 #define VIDEO_BUFNUM       (3)
 #define STILL_BUFNUM       (1)
 
@@ -528,6 +530,29 @@ int main(int argc, FAR char *argv[])
         }
     }
 
+  /* Prepare for VIDEO_CAPTURE stream.
+   *
+   * The video buffer mode is V4L2_BUF_MODE_RING mode.
+   * In this RING mode, if all VIDIOC_QBUFed frame buffers are captured image
+   * and no additional frame buffers are VIDIOC_QBUFed, the capture continues
+   * as the oldest image in the V4L2_BUF_QBUFed frame buffer is reused in
+   * order from the captured frame buffer and a new camera image is
+   * recaptured.
+   *
+   * Allocate freame buffers for QVGA RGB565 size (320x240x2=150KB).
+   * Number of frame buffers is defined as VIDEO_BUFNUM(3).
+   * And all allocated memorys are VIDIOC_QBUFed.
+   */
+
+  ret = camera_prepare(v_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                       V4L2_BUF_MODE_RING, V4L2_PIX_FMT_RGB565,
+                       VIDEO_HSIZE_QVGA, VIDEO_VSIZE_QVGA,
+                       &buffers_video, VIDEO_BUFNUM, IMAGE_RGB_SIZE);
+  if (ret != OK)
+    {
+      goto exit_this_app;
+    }
+
   /* This application has 3 states.
    *
    * APP_STATE_BEFORE_CAPTURE:
@@ -560,7 +585,7 @@ int main(int argc, FAR char *argv[])
       is_eternal = 1;
       printf("Start video this mode is eternal."
              " (Non stop, non save files.)\n");
-#ifdef CONFIG_EXAMPLES_CAMERA_OUTPUT_LCD
+#ifndef CONFIG_EXAMPLES_CAMERA_OUTPUT_LCD
       printf("This mode should be run with LCD display\n");
 #endif
     }
@@ -571,7 +596,7 @@ int main(int argc, FAR char *argv[])
       wait.tv_usec = 0;
       printf("Take %d pictures as %s file in %s after %d seconds.\n",
              capture_num,
-              "JPEG",
+              (capture_type == V4L2_BUF_TYPE_STILL_CAPTURE) ? "JPEG" : "RGB",
              save_dir, START_CAPTURE_TIME);
       printf(" After finishing taking pictures,"
              " this app will be finished after %d seconds.\n",
@@ -593,12 +618,22 @@ int main(int argc, FAR char *argv[])
 
           case APP_STATE_BEFORE_CAPTURE:
           case APP_STATE_AFTER_CAPTURE:
+            ret = get_camimage(v_fd, &v4l2_buf, V4L2_BUF_TYPE_VIDEO_CAPTURE);
+            if (ret != OK)
+              {
+                goto exit_this_app;
+              }
 
-#if 0
-           CONFIG_EXAMPLES_CAMERA_OUTPUT_LCD
+#ifdef CONFIG_EXAMPLES_CAMERA_OUTPUT_LCD
             nximage_draw((void *)v4l2_buf.m.userptr,
                          VIDEO_HSIZE_QVGA, VIDEO_VSIZE_QVGA);
 #endif
+
+            ret = release_camimage(v_fd, &v4l2_buf);
+            if (ret != OK)
+              {
+                goto exit_this_app;
+              }
 
             if (!is_eternal)
               {
@@ -618,7 +653,9 @@ int main(int argc, FAR char *argv[])
                       }
                   }
               }
+
             break; /* Finish APP_STATE_BEFORE_CAPTURE or APP_STATE_AFTER_CAPTURE */
+
           /* UNDER_CAPTURE is taking pictures until number of capture_num
            * value.
            * This state stays until finishing all pictures.
@@ -639,10 +676,13 @@ int main(int argc, FAR char *argv[])
                   {
                     goto exit_this_app;
                   }
+
                 futil_writeimage(
                   (uint8_t *)v4l2_buf.m.userptr,
                   (size_t)v4l2_buf.bytesused,
-                  "JPG");
+                  (capture_type == V4L2_BUF_TYPE_VIDEO_CAPTURE) ?
+                  "RGB" : "JPG");
+
                 ret = release_camimage(v_fd, &v4l2_buf);
                 if (ret != OK)
                   {
